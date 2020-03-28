@@ -10,6 +10,7 @@
     "micro service",
     "pubsub"
   ],
+  "repository": "hoffnung8493/redis-event-stream",
   "author": "hoffnung8493",
   "license": "MIT"
 }
