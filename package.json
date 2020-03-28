@@ -1,6 +1,6 @@
 {
   "name": "redis-event-stream",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Simplified redis5 stream client for event driven architecture.",
   "main": "index.js",
   "keywords": [
@@ -11,5 +11,5 @@
     "pubsub"
   ],
   "author": "hoffnung8493",
-  "license": "ISC"
+  "license": "MIT"
 }
