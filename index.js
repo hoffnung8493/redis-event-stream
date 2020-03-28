@@ -9,7 +9,7 @@ module.exports = ({ service, redisClient, numOfReplicas }) => {
       redisClient.xgroup('CREATE', stream, groupName, '$', 'MKSTREAM', err => {
         let checkAll = true;
         let xreadgroup = () => {
-          console.log('xreadGroup configured', { checkAll });
+          // console.log('xreadGroup configured', { checkAll });
           redisClient.xreadgroup(
             'GROUP',
             groupName,
@@ -22,17 +22,17 @@ module.exports = ({ service, redisClient, numOfReplicas }) => {
             stream,
             checkAll ? '0' : '>',
             async (err, data) => {
-              if (err) console.error(err);
+              // if (err) console.error(err);
               if (data) {
                 let events = data[0][1];
                 if (events.length === 0) {
-                  //처리 안된 이벤트가 없으면 비동기적으로 새로운 이벤트를 대기한다.
+                  //if no events are pending listen to new events asynchronously
                   checkAll = false;
                   xreadgroup();
                 } else {
-                  //이벤트 처리하는 동안 새로운 이벤트가 들어왔을 수도 있다.
-                  //이벤트 처리 후 처리 안된 모든 이벤트를 확인한다.
-                  console.log({ data });
+                  //while consuming events, new events might be published.
+                  //check for non-consumed events -> checkAll = true;
+                  // console.log({ data });
                   checkAll = true;
                   await Promise.all(
                     events.map(async ev => {
@@ -40,17 +40,17 @@ module.exports = ({ service, redisClient, numOfReplicas }) => {
                       let event = JSON.parse(ev[1][1]);
                       let result = await resolver(event);
                       if (result) {
-                        //이벤트 처리 성공 -> 그룹 리스트에서 제거한다.
+                        //If the resolver successfully consumes the event, remove the event from the group;
                         redisClient.xack(stream, groupName, ev[0]);
-                        console.log('event consumed!');
+                        // console.log('event consumed!');
                       }
                     })
                   );
-                  console.log('events checked!!');
+                  // console.log('events checked!!');
                   xreadgroup();
                 }
               } else {
-                //계속 이벤트를 기다린다.
+                //keep listening for events
                 xreadgroup();
               }
             }
