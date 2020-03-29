@@ -22,7 +22,7 @@ module.exports = ({ service, redisClient, numOfReplicas }) => {
             stream,
             checkAll ? '0' : '>',
             async (err, data) => {
-              // if (err) console.error(err);
+              if (err) throw err;
               if (data) {
                 let events = data[0][1];
                 if (events.length === 0) {
@@ -61,7 +61,14 @@ module.exports = ({ service, redisClient, numOfReplicas }) => {
     });
   };
 
-  const emitter = ({ stream, event }) => redisClient.xadd(service + '-' + stream, '*', 'event', JSON.stringify(event));
+  const emitter = ({ stream, event }) => {
+    return new Promise((resolve, reject) =>
+      redisClient.xadd(stream, '*', 'event', JSON.stringify(event), err => {
+        if (err) return reject(err);
+        else return resolve();
+      })
+    );
+  };
 
   return { listenerConfing, emitter };
 };
