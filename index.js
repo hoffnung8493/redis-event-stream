@@ -6,6 +6,7 @@ module.exports = ({ service, redisClient, consumer }) => {
     listeners.map(({ resolver, stream, interval = 1000 }) => {
       if (!resolver.name) throw new Error('add name to resolver function! Resolver cannot be an annonymous function.');
       let groupName = service + '-' + resolver.name;
+      redisClient.sadd('listenersList', `${service}-${stream}-${resolver.name}`, err => console.error(err));
       redisClient.xgroup('CREATE', stream, groupName, '$', 'MKSTREAM', err => {
         let checkAll = true;
         let xreadgroup = () => {
@@ -63,16 +64,10 @@ module.exports = ({ service, redisClient, consumer }) => {
 
   const emitter = ({ stream, event }) => {
     return new Promise((resolve, reject) => {
-      let counter = 0;
-      redisClient.sadd('streamList', stream, err => {
-        if (err) return reject(err);
-        else counter++;
-        if (counter === 2) resolve();
-      });
+      redisClient.sadd('eventList', stream, err => console.error(err));
       redisClient.xadd(stream, '*', 'event', JSON.stringify(event), err => {
         if (err) return reject(err);
-        else counter++;
-        if (counter === 2) resolve();
+        return resolve();
       });
     });
   };
