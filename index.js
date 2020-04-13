@@ -3,7 +3,7 @@ module.exports = ({ service, redisClient, consumer }) => {
   //So if there is a consumer list with pending for more than 60 seconds pull the events to active consumer
   //Then if the number of consumer is larger than implied, remove that consumer
   const listenerConfing = ({ listeners }) => {
-    listeners.map(({ resolver, stream }) => {
+    listeners.map(({ resolver, stream, interval = 1000 }) => {
       if (!resolver.name) throw new Error('add name to resolver function! Resolver cannot be an annonymous function.');
       let groupName = service + '-' + resolver.name;
       redisClient.xgroup('CREATE', stream, groupName, '$', 'MKSTREAM', err => {
@@ -28,7 +28,7 @@ module.exports = ({ service, redisClient, consumer }) => {
                 if (events.length === 0) {
                   //if no events are pending listen to new events asynchronously
                   checkAll = false;
-                  setTimeout(() => xreadgroup(), 3000);
+                  setTimeout(() => xreadgroup(), interval);
                 } else {
                   //while consuming events, new events might be published.
                   //check for non-consumed events -> checkAll = true;
@@ -47,16 +47,16 @@ module.exports = ({ service, redisClient, consumer }) => {
                     })
                   );
                   // console.log('events checked!!');
-                  setTimeout(() => xreadgroup(), 3000);
+                  setTimeout(() => xreadgroup(), interval);
                 }
               } else {
                 //keep listening for events
-                setTimeout(() => xreadgroup(), 3000);
+                setTimeout(() => xreadgroup(), interval);
               }
             }
           );
         };
-        setTimeout(() => xreadgroup(), 3000); //init event listener
+        setTimeout(() => xreadgroup(), interval); //init event listener
       });
     });
   };
