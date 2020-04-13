@@ -66,7 +66,7 @@ module.exports = ({ service, redisClient, consumer }) => {
 
   const emitter = ({ stream, event }) => {
     return new Promise((resolve, reject) => {
-      redisClient.sadd('eventList', stream, err => {
+      redisClient.sadd('eventList', `${service}-${stream}`, err => {
         if (err) console.error(err);
       });
       redisClient.xadd(stream, '*', 'event', JSON.stringify(event), err => {
