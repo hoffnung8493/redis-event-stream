@@ -28,7 +28,7 @@ module.exports = ({ service, redisClient, consumer }) => {
                 if (events.length === 0) {
                   //if no events are pending listen to new events asynchronously
                   checkAll = false;
-                  xreadgroup();
+                  setTimeout(() => xreadgroup(), 3000);
                 } else {
                   //while consuming events, new events might be published.
                   //check for non-consumed events -> checkAll = true;
@@ -47,16 +47,16 @@ module.exports = ({ service, redisClient, consumer }) => {
                     })
                   );
                   // console.log('events checked!!');
-                  xreadgroup();
+                  setTimeout(() => xreadgroup(), 3000);
                 }
               } else {
                 //keep listening for events
-                xreadgroup();
+                setTimeout(() => xreadgroup(), 3000);
               }
             }
           );
         };
-        xreadgroup(); //init event listener
+        setTimeout(() => xreadgroup(), 3000); //init event listener
       });
     });
   };
