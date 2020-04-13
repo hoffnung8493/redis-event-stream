@@ -3,13 +3,13 @@ module.exports = ({ service, redisClient, consumer }) => {
   //So if there is a consumer list with pending for more than 60 seconds pull the events to active consumer
   //Then if the number of consumer is larger than implied, remove that consumer
   const listenerConfing = ({ listeners }) => {
-    listeners.map(({ resolver, stream, interval = 1000 }) => {
+    listeners.map(({ resolver, eventName, interval = 1000 }) => {
       if (!resolver.name) throw new Error('add name to resolver function! Resolver cannot be an annonymous function.');
       let groupName = service + '-' + resolver.name;
-      redisClient.sadd('listenersList', `${service}-${stream}-${resolver.name}`, err => {
+      redisClient.sadd('listenersList', `${service}-${eventName}-${resolver.name}`, err => {
         if (err) console.error(err);
       });
-      redisClient.xgroup('CREATE', stream, groupName, '$', 'MKSTREAM', err => {
+      redisClient.xgroup('CREATE', eventName, groupName, '$', 'MKSTREAM', err => {
         let checkAll = true;
         let xreadgroup = () => {
           // console.log('xreadGroup configured', { checkAll });
@@ -22,7 +22,7 @@ module.exports = ({ service, redisClient, consumer }) => {
             'BLOCK',
             10000,
             'STREAMS',
-            stream,
+            eventName,
             checkAll ? '0' : '>',
             async (err, data) => {
               if (err) throw err;
@@ -44,7 +44,7 @@ module.exports = ({ service, redisClient, consumer }) => {
                       let result = await resolver(event);
                       if (result) {
                         //If the resolver successfully consumes the event, remove the event from the group;
-                        redisClient.xack(stream, groupName, ev[0]);
+                        redisClient.xack(eventName, groupName, ev[0]);
                         // console.log('event consumed!');
                       }
                     })
@@ -64,12 +64,12 @@ module.exports = ({ service, redisClient, consumer }) => {
     });
   };
 
-  const emitter = ({ stream, event }) => {
+  const emitter = ({ name, body }) => {
     return new Promise((resolve, reject) => {
-      redisClient.sadd('eventList', `${service}-${stream}`, err => {
+      redisClient.sadd('eventList', `${service}-${name}`, err => {
         if (err) console.error(err);
       });
-      redisClient.xadd(stream, '*', 'event', JSON.stringify(event), err => {
+      redisClient.xadd(name, '*', 'event', JSON.stringify(body), err => {
         if (err) return reject(err);
         return resolve();
       });
