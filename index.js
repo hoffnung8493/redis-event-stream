@@ -1,9 +1,9 @@
-module.exports = ({ service, redisClient, numOfReplicas }) => {
+module.exports = ({ service, redisClient, consumer }) => {
   //TODO: When POD restarts, it will have a new name(service).
   //So if there is a consumer list with pending for more than 60 seconds pull the events to active consumer
   //Then if the number of consumer is larger than implied, remove that consumer
   const listenerConfing = ({ listeners }) => {
-    listeners.map(({ resolver, stream, consumer }) => {
+    listeners.map(({ resolver, stream }) => {
       if (!resolver.name) throw new Error('add name to resolver function! Resolver cannot be an annonymous function.');
       let groupName = service + '-' + resolver.name;
       redisClient.xgroup('CREATE', stream, groupName, '$', 'MKSTREAM', err => {
