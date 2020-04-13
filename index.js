@@ -62,12 +62,19 @@ module.exports = ({ service, redisClient, consumer }) => {
   };
 
   const emitter = ({ stream, event }) => {
-    return new Promise((resolve, reject) =>
+    return new Promise((resolve, reject) => {
+      let counter = 0;
+      redisClient.sadd('streamList', stream, err => {
+        if (err) return reject(err);
+        else counter++;
+        if (counter === 2) resolve();
+      });
       redisClient.xadd(stream, '*', 'event', JSON.stringify(event), err => {
         if (err) return reject(err);
-        else return resolve();
-      })
-    );
+        else counter++;
+        if (counter === 2) resolve();
+      });
+    });
   };
 
   return { listenerConfing, emitter };
