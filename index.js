@@ -3,6 +3,11 @@ module.exports = ({ service, redisClient, consumer }) => {
   //So if there is a consumer list with pending for more than 60 seconds pull the events to active consumer
   //Then if the number of consumer is larger than implied, remove that consumer
   const listenerConfing = ({ listeners }) => {
+    let list = listeners.map(v => ({ name: v.resolver.name, eventName: v.eventName }));
+    for (let listener of list) {
+      if (list.filter(v => v.name === listener.name && v.eventName === listener.eventName) > 1)
+        throw new Error('DUPLICATED!! [resolver name, eventName] pair must be unique ');
+    }
     listeners.map(({ resolver, eventName, interval = 1000 }) => {
       if (!resolver.name) throw new Error('add name to resolver function! Resolver cannot be an annonymous function.');
       let groupName = service + '-' + resolver.name;
@@ -71,7 +76,7 @@ module.exports = ({ service, redisClient, consumer }) => {
       });
       redisClient.xadd(name, '*', 'event', JSON.stringify(body), err => {
         if (err) return reject(err);
-        return resolve();
+        resolve();
       });
     });
   };
