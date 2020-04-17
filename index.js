@@ -1,7 +1,8 @@
-module.exports = ({ service, redisClient, consumer }) => {
+module.exports = ({ service, redisClient, consumer, devMode = true }) => {
   //TODO: When POD restarts, it will have a new name(service).
   //So if there is a consumer list with pending for more than 60 seconds pull the events to active consumer
   //Then if the number of consumer is larger than implied, remove that consumer
+  if (!redisClient) throw new Error('redisClient not provided!!!');
   const listenerConfing = ({ listeners }) => {
     let list = listeners.map(v => ({ name: v.resolver.name, eventName: v.eventName }));
     for (let listener of list) {
@@ -11,14 +12,15 @@ module.exports = ({ service, redisClient, consumer }) => {
     listeners.map(({ resolver, eventName, interval = 1000 }) => {
       if (!resolver.name) throw new Error('add name to resolver function! Resolver cannot be an annonymous function.');
       let groupName = service + '-' + resolver.name;
-      redisClient.sadd('listenersList', `${service}-${eventName}-${resolver.name}`, err => {
+      let client = redisClient.duplicate();
+      client.sadd('listenersList', `${service}-${eventName}-${resolver.name}`, err => {
         if (err) console.error(err);
       });
-      redisClient.xgroup('CREATE', eventName, groupName, '$', 'MKSTREAM', err => {
+      client.xgroup('CREATE', eventName, groupName, '$', 'MKSTREAM', err => {
         let checkAll = true;
         let xreadgroup = () => {
           // console.log('xreadGroup configured', { checkAll });
-          redisClient.xreadgroup(
+          client.xreadgroup(
             'GROUP',
             groupName,
             consumer,
@@ -46,11 +48,12 @@ module.exports = ({ service, redisClient, consumer }) => {
                     events.map(async ev => {
                       currentId = ev[0];
                       let event = JSON.parse(ev[1][1]);
+                      if (devMode) console.log(`RECEIVED EVENT<${eventName}>, body: ${JSON.stringify(event)}`);
                       let result = await resolver(event);
                       if (result) {
                         //If the resolver successfully consumes the event, remove the event from the group;
-                        redisClient.xack(eventName, groupName, ev[0]);
-                        // console.log('event consumed!');
+                        client.xack(eventName, groupName, ev[0]);
+                        if (devMode) console.log('EVENT consumed!');
                       }
                     })
                   );
@@ -71,13 +74,19 @@ module.exports = ({ service, redisClient, consumer }) => {
 
   const emitter = ({ name, body }) => {
     return new Promise((resolve, reject) => {
-      redisClient.sadd('eventList', `${service}-${name}`, err => {
-        if (err) console.error(err);
-      });
-      redisClient.xadd(name, '*', 'event', JSON.stringify(body), err => {
-        if (err) return reject(err);
-        resolve();
-      });
+      try {
+        client = redisClient.duplicate();
+        client.sadd('eventList', `${service}-${name}`, err => {
+          if (err) console.error(err);
+          client.xadd(name, '*', 'event', JSON.stringify(body), err => {
+            if (devMode) console.log(`PUBLISHED EVENT <${name}>, body: ${JSON.stringify(body)}`);
+            if (err) return reject(err);
+            resolve();
+          });
+        });
+      } catch (err) {
+        console.error(err);
+      }
     });
   };
 
