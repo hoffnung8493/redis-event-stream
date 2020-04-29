@@ -1,6 +1,6 @@
 {
   "name": "redis-event-stream",
-  "version": "0.1.23",
+  "version": "0.1.28",
   "description": "Simplified redis5 stream client for event driven architecture.",
   "main": "index.js",
   "keywords": [

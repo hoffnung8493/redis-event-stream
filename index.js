@@ -48,12 +48,12 @@ module.exports = ({ service, redisClient, consumer, devMode = true }) => {
                     events.map(async ev => {
                       currentId = ev[0];
                       let event = JSON.parse(ev[1][1]);
-                      if (devMode) console.log(`RECEIVED EVENT<${eventName}>, body: ${JSON.stringify(event)}`);
+                      if (devMode) console.log(`EVENT RECEIVED <${eventName}> - ${currentId} `);
                       let result = await resolver(event);
                       if (result) {
                         //If the resolver successfully consumes the event, remove the event from the group;
                         client.xack(eventName, groupName, ev[0]);
-                        if (devMode) console.log('EVENT consumed!');
+                        if (devMode) console.log(`EVENT CONSUMED <${eventName}>  - ${currentId} `);
                       }
                     })
                   );
@@ -72,14 +72,14 @@ module.exports = ({ service, redisClient, consumer, devMode = true }) => {
     });
   };
 
-  const emitter = ({ name, body }) => {
+  const emitter = (name, body) => {
     return new Promise((resolve, reject) => {
       try {
         client = redisClient.duplicate();
         client.sadd('eventList', `${service}-${name}`, err => {
           if (err) console.error(err);
-          client.xadd(name, '*', 'event', JSON.stringify(body), err => {
-            if (devMode) console.log(`PUBLISHED EVENT <${name}>, body: ${JSON.stringify(body)}`);
+          client.xadd(name, '*', 'event', JSON.stringify(body), (err, res) => {
+            if (devMode) console.log(`EVENT PUBLISHED <${name}> - ${res}, body: ${JSON.stringify(body)}`);
             if (err) return reject(err);
             resolve();
           });
